@@ -69,5 +69,5 @@ window.LOCAL_MODE = true;
     if (method === 'PUT' && path === '/locks') { adm(); DB.locks = DB.locks.filter(l => !(l.user_id === body.user_id && l.ym === body.ym)); if (body.locked) DB.locks.push({ user_id: body.user_id, ym: body.ym }); return { ok: true }; }
     throw fail(404, 'Nicht gefunden');
   };
-  window.MOCK_API = async (m, u, b) => { const r = await run(m, u, b); if (m !== 'GET') save(); return r; };
+  window.API_OVERRIDE = async (m, u, b) => { const r = await run(m, u, b); if (m !== 'GET') save(); return r; };
 })();

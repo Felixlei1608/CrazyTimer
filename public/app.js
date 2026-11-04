@@ -20,7 +20,7 @@ const LOCS = ['Büro', 'Homeoffice', 'Außer Haus'];
 
 /* ---------- API ---------- */
 async function api(m, u, b) {
-  if (window.MOCK_API) return window.MOCK_API(m, u, b);
+  if (window.API_OVERRIDE) return window.API_OVERRIDE(m, u, b);
   const r = await fetch('api' + u, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(j.error || 'Fehler'), { status: r.status });
@@ -47,7 +47,7 @@ const closeModal = () => $('#modal').hidden = true;
 $('#modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
 addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 const isAdmin = () => ST.me.role === 'admin';
-const curUser = () => (isAdmin() && ST.uid && ST.users.find(u => u.id === ST.uid)) || ST.me;
+const curUser = () => (isAdmin() && ST.uid && ST.users.find(u => u.id == ST.uid)) || ST.me;
 const num = u => ({ ...u, weekly_hours: +u.weekly_hours, vacation_days: +u.vacation_days, opening_balance: +u.opening_balance });
 
 /* ---------- Berechnung ---------- */
@@ -114,7 +114,7 @@ function authScreen(mode = 'login', msg = '', ok = false) {
   $('#af').onsubmit = async ev => {
     ev.preventDefault(); const email = $('#a_e').value, password = $('#a_p').value;
     if (mode === 'login') return login(email, password);
-    try { const r = await api('POST', '/register', { name: $('#a_n').value, email, password }); r.pending ? authScreen('login', 'Registriert. Sobald der Admin dein Konto freischaltet, kannst du dich anmelden.', true) : boot(); }
+    try { const r = await api('POST', '/register', { name: $('#a_n').value, email, password }); r.pending ? authScreen('login', r.confirm ? 'Registriert. Bitte bestätige deine E-Mail-Adresse über den Link in der Mail. Danach schaltet der Admin dein Konto frei.' : 'Registriert. Sobald der Admin dein Konto freischaltet, kannst du dich anmelden.', true) : boot(); }
     catch (e) { authScreen('register', e.message); }
   };
 }
@@ -137,7 +137,7 @@ function pwModal() {
 }
 function render() { clearInterval(tick); ({ zeit, berichte, urlaub, verwaltung }[ST.view] || zeit)().catch(e => { if (e.status === 401) authScreen(); else toast(e.message); }); }
 const userPicker = () => isAdmin() ? `<div class="card"><h3>Mitarbeiter</h3><select id="up" aria-label="Mitarbeiter">${ST.users.filter(u => u.status === 'active').map(u => `<option value="${u.id}" ${u.id === curUser().id ? 'selected' : ''}>${esc(u.name)}${u.role === 'admin' ? ' (Admin)' : ''}</option>`).join('')}</select></div>` : '';
-const bindPicker = () => { const s = $('#up'); if (s) s.onchange = () => { ST.uid = +s.value; render(); }; };
+const bindPicker = () => { const s = $('#up'); if (s) s.onchange = () => { ST.uid = s.value; render(); }; };
 const monthPicker = () => `<div class="card"><h3>Zeitraum</h3><div class="yr"><button id="py" aria-label="Vorjahr">‹</button><span>${ST.y}</span><button id="ny" aria-label="Nächstes Jahr">›</button></div><div class="months">${MS.map((m, i) => `<button data-mo="${i}" class="${i === ST.m ? 'on' : ''}">${m}</button>`).join('')}</div><button class="btn ghost sm" id="td" style="margin-top:10px;width:100%">Heute</button></div>`;
 function bindMonth() {
   $('#py').onclick = () => { ST.y--; render(); }; $('#ny').onclick = () => { ST.y++; render(); }; $('#td').onclick = () => { ST.y = now0.getFullYear(); ST.m = now0.getMonth(); render(); };
@@ -290,7 +290,7 @@ async function verwaltung() {
   } else {
     body = `<div class="card"><div class="list">${ST.projects.map(p => `<div class="row"><i class="dot" style="background:${p.color};width:14px;height:14px"></i><div class="t"><b>${esc(p.name)}</b></div><button class="btn ghost sm" data-p="${p.id}">Bearbeiten</button></div>`).join('')}</div></div>`;
   }
-  shell(`<div class="head"><div><h1>Verwaltung</h1><p>Nur der Admin legt Mitarbeiter, Wochenstunden und Urlaubstage fest und genehmigt Anträge.</p></div><div class="tools"><div class="seg">${[['users', 'Mitarbeiter' + (ST.pend.users ? ` (${ST.pend.users})` : '')], ['req', 'Anträge' + (ST.pend.absences ? ` (${ST.pend.absences})` : '')], ['proj', 'Projekte']].map(([k, l]) => `<button data-t="${k}" class="${t === k ? 'on' : ''}">${l}</button>`).join('')}</div>${t === 'users' ? '<button class="btn" id="nu">＋ Mitarbeiter</button>' : t === 'proj' ? '<button class="btn" id="np">＋ Projekt</button>' : ''}</div></div>${body}`);
+  shell(`<div class="head"><div><h1>Verwaltung</h1><p>${window.SUPABASE_MODE ? 'Neue Mitarbeiter registrieren sich selbst. Nur der Admin schaltet sie frei, legt Wochenstunden und Urlaubstage fest und genehmigt Anträge.' : 'Nur der Admin legt Mitarbeiter, Wochenstunden und Urlaubstage fest und genehmigt Anträge.'}</p></div><div class="tools"><div class="seg">${[['users', 'Mitarbeiter' + (ST.pend.users ? ` (${ST.pend.users})` : '')], ['req', 'Anträge' + (ST.pend.absences ? ` (${ST.pend.absences})` : '')], ['proj', 'Projekte']].map(([k, l]) => `<button data-t="${k}" class="${t === k ? 'on' : ''}">${l}</button>`).join('')}</div>${t === 'users' && !window.SUPABASE_MODE ? '<button class="btn" id="nu">＋ Mitarbeiter</button>' : t === 'proj' ? '<button class="btn" id="np">＋ Projekt</button>' : ''}</div></div>${body}`);
   document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { ST.tab = b.dataset.t; verwaltung(); });
   document.querySelectorAll('[data-u]').forEach(r => r.onclick = ev => { if (!ev.target.closest('[data-act]')) userModal(ST.users.find(u => u.id == r.dataset.u)); });
   document.querySelectorAll('[data-act]').forEach(b => b.onclick = async () => { const u = ST.users.find(x => x.id == b.dataset.act); await api('PUT', '/users/' + u.id, { ...u, status: 'active' }); toast(u.name + ' freigeschaltet'); verwaltung(); });
@@ -301,15 +301,15 @@ async function verwaltung() {
 function userModal(u) {
   const isNew = !u, adminU = u && u.role === 'admin'; u = u || { name: '', email: '', department: '', weekly_hours: 38.5, vacation_days: 25, work_days: '1,2,3,4,5', start_date: ymd(new Date()), opening_balance: 0, status: 'active' };
   const wd = String(u.work_days).split(',').map(Number);
-  openModal(`<h2>${isNew ? 'Neuer Mitarbeiter' : esc(u.name)}</h2><label for="u_n">Name</label><input id="u_n" value="${esc(u.name)}"><div class="two"><div><label for="u_e">E-Mail</label><input id="u_e" type="email" value="${esc(u.email)}"></div><div><label for="u_dep">Abteilung</label><input id="u_dep" value="${esc(u.department)}"></div>
+  openModal(`<h2>${isNew ? 'Neuer Mitarbeiter' : esc(u.name)}</h2><label for="u_n">Name</label><input id="u_n" value="${esc(u.name)}"><div class="two"><div><label for="u_e">E-Mail</label><input id="u_e" type="email" value="${esc(u.email)}" ${window.SUPABASE_MODE ? 'disabled' : ''}></div><div><label for="u_dep">Abteilung</label><input id="u_dep" value="${esc(u.department)}"></div>
   <div><label for="u_h">Wochenstunden (Soll)</label><input id="u_h" type="number" step="0.5" min="0" value="${u.weekly_hours}"></div><div><label for="u_v">Urlaubstage / Jahr</label><input id="u_v" type="number" step="0.5" min="0" value="${u.vacation_days}"></div>
   <div><label for="u_s">Eintritt</label><input id="u_s" type="date" value="${u.start_date.slice(0, 10)}"></div><div><label for="u_o">Zeitsaldo bei Eintritt (Std)</label><input id="u_o" type="number" step="0.25" value="${u.opening_balance}"></div></div>
   <label>Arbeitstage</label><div class="seg full" id="u_wd">${['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d, i) => `<button type="button" data-wd="${i + 1}" class="${wd.includes(i + 1) ? 'on' : ''}">${d}</button>`).join('')}</div>
   ${adminU ? '' : `<label for="u_st">Status</label><select id="u_st">${[['active', 'aktiv'], ['pending', 'wartet auf Freischaltung'], ['disabled', 'deaktiviert']].map(([k, l]) => `<option value="${k}" ${u.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`}
-  <label for="u_p">${isNew ? 'Passwort (mind. 8 Zeichen)' : 'Neues Passwort setzen (optional)'}</label><input id="u_p" type="password" autocomplete="new-password"><div id="f_err"></div><div class="acts"><button class="btn ghost" id="m_x">Abbrechen</button><button class="btn" id="m_ok">Sichern</button></div>`);
+  ${window.SUPABASE_MODE ? '' : `<label for="u_p">${isNew ? 'Passwort (mind. 8 Zeichen)' : 'Neues Passwort setzen (optional)'}</label><input id="u_p" type="password" autocomplete="new-password">`}<div id="f_err"></div><div class="acts"><button class="btn ghost" id="m_x">Abbrechen</button><button class="btn" id="m_ok">Sichern</button></div>`);
   $('#m_x').onclick = closeModal; document.querySelectorAll('[data-wd]').forEach(b => b.onclick = () => b.classList.toggle('on'));
   $('#m_ok').onclick = async () => {
-    const b = { name: $('#u_n').value.trim(), email: $('#u_e').value.trim(), department: $('#u_dep').value, weekly_hours: $('#u_h').value, vacation_days: $('#u_v').value, start_date: $('#u_s').value, opening_balance: $('#u_o').value, work_days: [...document.querySelectorAll('[data-wd].on')].map(x => x.dataset.wd).join(','), status: $('#u_st') ? $('#u_st').value : 'active', password: $('#u_p').value };
+    const b = { name: $('#u_n').value.trim(), email: $('#u_e').value.trim(), department: $('#u_dep').value, weekly_hours: $('#u_h').value, vacation_days: $('#u_v').value, start_date: $('#u_s').value, opening_balance: $('#u_o').value, work_days: [...document.querySelectorAll('[data-wd].on')].map(x => x.dataset.wd).join(','), status: $('#u_st') ? $('#u_st').value : 'active', password: $('#u_p') ? $('#u_p').value : '' };
     if (!b.work_days) return $('#f_err').innerHTML = '<div class="err">Mindestens ein Arbeitstag</div>';
     try { isNew ? await api('POST', '/users', b) : await api('PUT', '/users/' + u.id, b); closeModal(); toast('Gesichert'); verwaltung(); } catch (e) { $('#f_err').innerHTML = `<div class="err">${esc(e.message)}</div>`; }
   };

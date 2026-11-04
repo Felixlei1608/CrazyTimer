@@ -5,11 +5,18 @@
 <div id="modal" class="modal" hidden><div class="sheet" id="sheet"></div></div>
 <script src="config.js"></script>
 <script>
-  // GitHub Pages kann keine Datenbank betreiben: dort wird auf den echten Server (config.js) weitergeleitet.
-  // Lokal gibt es mit ?demo eine Vorschau ohne Server (Daten nur im Browser, nicht dauerhaft).
-  var onPages = /github\.io$/.test(location.hostname);
-  if (onPages && window.APP_URL) location.replace(window.APP_URL);
-  else if (onPages) document.write('<div style="font:16px -apple-system,Segoe UI,sans-serif;max-width:520px;margin:15vh auto;padding:0 20px"><h2>CrazyTimer</h2><p>Der Server mit der Datenbank ist noch nicht verbunden. Trage seine Adresse in <code>public/config.js</code> ein (siehe README, Abschnitt „Online betreiben“).</p></div>');
-  else if (/[?&]demo\b/.test(location.search)) document.write('<script src="mock-backend.js"><\/script>');
+  // Betriebsarten: 1) Supabase (config.js ausgefüllt, dauerhaft, läuft auch auf GitHub Pages)
+  //                2) eigener Node-Server mit MySQL (nur wenn kein Supabase eingetragen ist)
+  //                3) ?demo = Vorschau ohne Datenbank (nur lokal)
+  var host = location.hostname, onPages = /github\.io$/.test(host), tag = function (src) { return '<script src="' + src + '"><\/script>'; };
+  if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+    document.write(tag('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js') + tag('supabase-backend.js') + tag('app.js'));
+  } else if (onPages) {
+    document.write('<div style="font:16px -apple-system,Segoe UI,sans-serif;max-width:560px;margin:15vh auto;padding:0 20px"><h2>CrazyTimer</h2><p>Die Datenbank (Supabase) ist noch nicht verbunden. Trage Project URL und anon key in <code>public/config.js</code> ein (siehe README, Abschnitt „Supabase“).</p></div>');
+  } else if (/[?&]demo\b/.test(location.search)) {
+    document.write(tag('mock-backend.js') + tag('app.js'));
+  } else {
+    document.write(tag('app.js'));
+  }
 </script>
-<script>if (!(/github\.io$/.test(location.hostname))) document.write('<script src="app.js"><\/script>');</script></body></html>
+</body></html>
