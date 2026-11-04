@@ -20,7 +20,14 @@
   }
   async function fn(body) {           // Edge Function "admin-users" (Konto anlegen / Passwort setzen), nur für den Admin
     const { data, error } = await sb.functions.invoke('admin-users', { body });
-    if (error) { let msg = 'Die Funktion „admin-users“ ist nicht erreichbar. Wurde sie in Supabase veröffentlicht?'; try { msg = (await error.context.json()).error || msg; } catch (e) { } throw fail(400, msg); }
+    if (error) {
+      const code = error.context && error.context.status; let detail = '';
+      try { const j = await error.context.json(); detail = j.error || j.message || ''; } catch (e) { }
+      if (error.name === 'FunctionsFetchError') throw fail(502, 'Verbindung zur Funktion „admin-users“ fehlgeschlagen. Ist sie in Supabase veröffentlicht (Name genau admin-users)? Details: ' + (error.message || ''));
+      if (code === 404) throw fail(404, 'Die Funktion „admin-users“ wurde in Supabase nicht gefunden. Name prüfen und veröffentlichen (Deploy).');
+      if (code === 401) throw fail(401, 'Supabase hat den Aufruf abgelehnt (401' + (detail ? ': ' + detail : '') + '). In den Einstellungen der Funktion „Verify JWT“ ausschalten, oder neu anmelden.');
+      throw fail(code || 400, 'Fehler der Funktion „admin-users“' + (code ? ' (' + code + ')' : '') + (detail ? ': ' + detail : '. ' + (error.message || '')));
+    }
     if (data && data.error) throw fail(400, data.error);
     return data;
   }
