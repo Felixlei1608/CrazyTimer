@@ -41,19 +41,7 @@ const adminOnly = (req, res, next) => req.user.role === 'admin' ? next() : res.s
 // Zugriff auf Daten eines Mitarbeiters: nur eigene, der Admin alle
 const target = req => { const id = +(req.query.user || req.body?.user_id || req.user.id); if (id !== req.user.id && req.user.role !== 'admin') throw fail(403, 'Kein Zugriff'); return id; };
 
-// ---- Registrierung / Login
-app.post('/api/register', wrap(async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !/^\S+@\S+\.\S+$/.test(email) || !password || password.length < 8) throw fail(400, 'Bitte Name, gültige E-Mail und ein Passwort mit mind. 8 Zeichen angeben');
-  if ((await q('SELECT id FROM users WHERE email=?', [email.toLowerCase()])).length) throw fail(409, 'Diese E-Mail ist bereits registriert');
-  // Admin wird, wer sich registriert, solange es noch keinen Admin gibt (mit ADMIN_EMAIL nur diese Adresse)
-  const noAdmin = (await q('SELECT COUNT(*) c FROM users WHERE role="admin"'))[0].c === 0;
-  const first = noAdmin && (!process.env.ADMIN_EMAIL || process.env.ADMIN_EMAIL.toLowerCase() === email.toLowerCase());
-  const r = await q('INSERT INTO users (email,name,pass_hash,role,status,start_date) VALUES (?,?,?,?,?,CURDATE())',
-    [email.toLowerCase(), name.trim(), hash(password), first ? 'admin' : 'user', first ? 'active' : 'pending']);
-  if (first) { await startSession(res, r.insertId); return res.json({ ok: true, admin: true }); }
-  res.json({ ok: true, pending: true });
-}));
+// ---- Login (keine Selbstregistrierung: Konten legt nur der Admin an)
 app.post('/api/login', wrap(async (req, res) => {
   const u = (await q('SELECT * FROM users WHERE email=?', [String(req.body.email || '').toLowerCase()]))[0];
   if (!u || !verify(String(req.body.password || ''), u.pass_hash)) throw fail(401, 'E-Mail oder Passwort stimmt nicht');
@@ -187,6 +175,13 @@ const fs = require('fs');
 async function initDb() {   // legt fehlende Tabellen automatisch an (Daten bleiben erhalten)
   const sql = fs.readFileSync(path.join(__dirname, '..', 'db', 'tables.sql'), 'utf8').replace(/^--.*$/gm, '');
   for (const stmt of sql.split(';').map(s => s.trim()).filter(Boolean)) await pool.query(stmt);
+  // Ersten Admin anlegen, falls noch keiner existiert (ADMIN_EMAIL + ADMIN_PASSWORD, optional ADMIN_NAME)
+  const [{ c }] = await q('SELECT COUNT(*) c FROM users WHERE role="admin"');
+  if (!c) {
+    const { ADMIN_EMAIL: e, ADMIN_PASSWORD: pw, ADMIN_NAME: n } = process.env;
+    if (e && pw && pw.length >= 8) { await q('INSERT INTO users (email,name,pass_hash,role,status,start_date) VALUES (?,?,?,"admin","active",CURDATE())', [e.toLowerCase(), n || 'Admin', hash(pw)]); console.log('Admin-Konto angelegt:', e); }
+    else console.warn('Es gibt noch keinen Admin. ADMIN_EMAIL und ADMIN_PASSWORD (mind. 8 Zeichen) setzen und neu starten.');
+  }
 }
 const port = process.env.PORT || 3100;
 initDb().then(() => app.listen(port, () => console.log(`Zeitfluss läuft auf Port ${port}`))).catch(e => { console.error('Datenbank nicht erreichbar:', e.message); process.exit(1); });

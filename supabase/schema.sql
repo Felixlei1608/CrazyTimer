@@ -87,7 +87,8 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 -- ---------- Trigger ----------
--- Neues Konto: Admin wird nur die E-Mail aus app_settings (solange es noch keinen Admin gibt), alle anderen warten auf Freischaltung
+-- Neues Konto: Admin wird nur die E-Mail aus app_settings (solange es noch keinen Admin gibt). Alle anderen Konten starten ohne Zugriff (pending),
+-- bis die Edge Function admin-users sie freischaltet. Selbstregistrierung sollte in Supabase ausgeschaltet sein.
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare make_admin boolean; ae text;

@@ -29,19 +29,11 @@ window.LOCAL_MODE = true;
   const clone = o => JSON.parse(JSON.stringify(o));
 
   const run = async function (method, url, body = {}) {
+    if (!DB.users.length) { const salt = newSalt(); DB.users.push({ id: nid(), name: 'Demo Admin', email: 'admin@demo.at', salt, pw: await hashPw('demo1234', salt), role: 'admin', status: 'active', department: '', weekly_hours: 38.5, vacation_days: 25, work_days: '1,2,3,4,5', start_date: ymd(new Date()), opening_balance: 0 }); DB.projects.push({ id: nid(), name: 'Allgemein', color: '#0a84ff', archived: 0 }); save(); }
     await new Promise(r => setTimeout(r, 30));
     const [path, qs] = url.split('?'), q = Object.fromEntries(new URLSearchParams(qs || '')), m = (re) => path.match(re);
     let x;
     if (method === 'POST' && path === '/login') { const u = DB.users.find(u => u.email === String(body.email).toLowerCase()); if (!u || !(await pwOk(u, body.password))) throw fail(401, 'E-Mail oder Passwort stimmt nicht'); if (u.status === 'pending') throw fail(403, 'Dein Konto wartet noch auf die Freischaltung durch den Admin'); if (u.status === 'disabled') throw fail(403, 'Dein Konto ist deaktiviert'); setCur(u.id); return pub(u); }
-    if (method === 'POST' && path === '/register') {
-      if (!body.name || !/^\S+@\S+\.\S+$/.test(body.email || '') || (body.password || '').length < 8) throw fail(400, 'Bitte Name, gültige E-Mail und ein Passwort mit mind. 8 Zeichen angeben');
-      if (DB.users.some(u => u.email === body.email.toLowerCase())) throw fail(409, 'Diese E-Mail ist bereits registriert');
-      const first = DB.users.length === 0, salt = newSalt();
-      const u = { id: nid(), name: body.name.trim(), email: body.email.toLowerCase(), salt, pw: await hashPw(body.password, salt), role: first ? 'admin' : 'user', status: first ? 'active' : 'pending', department: '', weekly_hours: 38.5, vacation_days: 25, work_days: '1,2,3,4,5', start_date: ymd(new Date()), opening_balance: 0 };
-      DB.users.push(u);
-      if (first) { DB.projects.push({ id: nid(), name: 'Allgemein', color: '#0a84ff', archived: 0 }); setCur(u.id); return { ok: true, admin: true }; }
-      return { ok: true, pending: true };
-    }
     if (method === 'POST' && path === '/logout') { setCur(null); return { ok: true }; }
     if (method === 'GET' && path === '/me') return pub(me());
     if (method === 'POST' && path === '/me/password') { if (!(await pwOk(me(), body.old))) throw fail(400, 'Das alte Passwort stimmt nicht'); if ((body.new || '').length < 8) throw fail(400, 'Neues Passwort: mind. 8 Zeichen'); me().pw = await hashPw(body.new, me().salt); return { ok: true }; }

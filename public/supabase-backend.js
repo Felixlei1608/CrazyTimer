@@ -18,6 +18,12 @@
     if (data.status !== 'active') { await sb.auth.signOut(); throw fail(401, 'Nicht angemeldet'); }
     return data;
   }
+  async function fn(body) {           // Edge Function "admin-users" (Konto anlegen / Passwort setzen), nur für den Admin
+    const { data, error } = await sb.functions.invoke('admin-users', { body });
+    if (error) { let msg = 'Die Funktion „admin-users“ ist nicht erreichbar. Wurde sie in Supabase veröffentlicht?'; try { msg = (await error.context.json()).error || msg; } catch (e) { } throw fail(400, msg); }
+    if (data && data.error) throw fail(400, data.error);
+    return data;
+  }
   async function all(build) {          // holt auch mehr als 1000 Zeilen (PostgREST-Limit)
     let out = [], from = 0;
     for (;;) { const { data, error } = await build().range(from, from + 999); chk(error); out = out.concat(data); if (data.length < 1000) return out; from += 1000; }
@@ -36,15 +42,6 @@
       if (p.status !== 'active') { await sb.auth.signOut(); throw fail(403, p.status === 'pending' ? 'Dein Konto wartet noch auf die Freischaltung durch den Admin' : 'Dein Konto ist deaktiviert'); }
       return p;
     }
-    if (method === 'POST' && path === '/register') {
-      if (!body.name || !/^\S+@\S+\.\S+$/.test(body.email || '') || (body.password || '').length < 8) throw fail(400, 'Bitte Name, gültige E-Mail und ein Passwort mit mind. 8 Zeichen angeben');
-      const { data, error } = await sb.auth.signUp({ email: body.email.trim(), password: body.password, options: { data: { name: body.name.trim() } } });
-      if (error) throw fail(400, /registered/i.test(error.message) ? 'Diese E-Mail ist bereits registriert' : error.message);
-      if (!data.session) return { ok: true, pending: true, confirm: true };      // E-Mail-Bestätigung ist in Supabase aktiv
-      const { data: p } = await sb.from('profiles').select('status').eq('id', data.user.id).single();
-      if (p && p.status === 'active') return { ok: true, admin: true };
-      await sb.auth.signOut(); return { ok: true, pending: true };
-    }
     if (method === 'POST' && path === '/logout') { await sb.auth.signOut(); return { ok: true }; }
     if (method === 'GET' && path === '/me') return me();
     if (method === 'POST' && path === '/me/password') {
@@ -54,9 +51,14 @@
       const r = await sb.auth.updateUser({ password: body.new }); chk(r.error); return { ok: true };
     }
     if (method === 'GET' && path === '/users') { const { data, error } = await sb.from('profiles').select('*').order('role').order('name'); chk(error); return data; }
+    if (method === 'POST' && path === '/users') {
+      await me(); const b = body; return fn({ action: 'create', name: b.name, email: b.email, password: b.password, department: b.department, weekly_hours: b.weekly_hours, vacation_days: b.vacation_days, work_days: b.work_days, start_date: b.start_date, opening_balance: b.opening_balance });
+    }
     if (method === 'PUT' && (x = m(/^\/users\/([\w-]+)$/))) {
       const b = body, { error, data } = await sb.from('profiles').update({ name: b.name, department: b.department || '', weekly_hours: +b.weekly_hours || 38.5, vacation_days: +b.vacation_days || 0, work_days: b.work_days, start_date: b.start_date, opening_balance: +b.opening_balance || 0, status: b.status }).eq('id', x[1]).select();
-      chk(error); if (!data.length) throw fail(403, 'Nur der Admin darf das'); return { ok: true };
+      chk(error); if (!data.length) throw fail(403, 'Nur der Admin darf das');
+      if (b.password) await fn({ action: 'set_password', id: x[1], password: b.password });
+      return { ok: true };
     }
     if (method === 'GET' && path === '/admin/pending') {
       const c = async f => { const { count, error } = await f; chk(error); return count || 0; };

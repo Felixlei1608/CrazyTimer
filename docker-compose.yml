@@ -27,6 +27,7 @@ services:
       DB_PASS: ${DB_PASS}
       DB_NAME: zeiterfassung
       ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL in .env setzen}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD in .env setzen}   # legt beim ersten Start das Admin-Konto an
       PORT: 3100
     ports:
       - "127.0.0.1:3100:3100"   # nur lokal erreichbar, öffentlich macht es der Cloudflare Tunnel

@@ -100,23 +100,14 @@ async function loadBase() {
   ST.projects = await api('GET', '/projects');
   if (isAdmin()) { ST.users = (await api('GET', '/users')).map(num); ST.pend = await api('GET', '/admin/pending'); }
 }
-function authScreen(mode = 'login', msg = '', ok = false) {
+function authScreen(msg = '') {
   clearInterval(tick);
   app.innerHTML = `<div class="auth"><div class="card box"><div class="logo">${logo(64)}<div><b>Zeitfluss</b><br><span>Arbeitszeiten einfach erfassen · by CrazyAquarium</span></div></div>
-  <div class="seg full"><button data-m="login" class="${mode === 'login' ? 'on' : ''}">Anmelden</button><button data-m="register" class="${mode === 'register' ? 'on' : ''}">Registrieren</button></div>
-  <form id="af">${mode === 'register' ? '<input id="a_n" placeholder="Vor- und Nachname" autocomplete="name" required>' : ''}<input id="a_e" type="email" placeholder="E-Mail" autocomplete="email" required><input id="a_p" type="password" placeholder="Passwort${mode === 'register' ? ' (mind. 8 Zeichen)' : ''}" autocomplete="${mode === 'register' ? 'new-password' : 'current-password'}" required minlength="${mode === 'register' ? 8 : 1}">
-  ${msg ? `<div class="${ok ? 'hint' : 'err'}" style="${ok ? 'color:var(--green);font-weight:600' : ''}">${esc(msg)}</div>` : ''}<button class="btn" type="submit">${mode === 'login' ? 'Anmelden' : 'Konto anlegen'}</button></form>
-  ${mode === 'register' ? '<p class="hint">Neue Konten müssen vom Admin freigeschaltet werden. Der Admin legt auch Wochenstunden und Urlaubstage fest.</p>' : ''}
-  ${window.LOCAL_MODE ? `<p class="hint">${mode === 'register' ? 'Der erste registrierte Benutzer wird Admin. ' : ''}Diese Version läuft ohne Server: Alle Daten werden nur in diesem Browser gespeichert.</p>` : ''}</div></div>`;
-  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => authScreen(b.dataset.m));
-  const login = async (email, password) => { try { await api('POST', '/login', { email, password }); boot(); } catch (e) { authScreen('login', e.message); } };
-  document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => login(...b.dataset.q.split('|')));
-  $('#af').onsubmit = async ev => {
-    ev.preventDefault(); const email = $('#a_e').value, password = $('#a_p').value;
-    if (mode === 'login') return login(email, password);
-    try { const r = await api('POST', '/register', { name: $('#a_n').value, email, password }); r.pending ? authScreen('login', r.confirm ? 'Registriert. Bitte bestätige deine E-Mail-Adresse über den Link in der Mail. Danach schaltet der Admin dein Konto frei.' : 'Registriert. Sobald der Admin dein Konto freischaltet, kannst du dich anmelden.', true) : boot(); }
-    catch (e) { authScreen('register', e.message); }
-  };
+  <form id="af"><input id="a_e" type="email" placeholder="E-Mail" autocomplete="email" required><input id="a_p" type="password" placeholder="Passwort" autocomplete="current-password" required>
+  ${msg ? `<div class="err">${esc(msg)}</div>` : ''}<button class="btn" type="submit">Anmelden</button></form>
+  <p class="hint">Konten legt der Admin an. Eine Selbstregistrierung gibt es nicht.</p>
+  ${window.LOCAL_MODE ? '<p class="hint">Vorschau ohne Server: Zugang <b>admin@demo.at</b> / <b>demo1234</b>. Daten werden nur in diesem Browser gespeichert.</p>' : ''}</div></div>`;
+  $('#af').onsubmit = async ev => { ev.preventDefault(); try { await api('POST', '/login', { email: $('#a_e').value, password: $('#a_p').value }); boot(); } catch (e) { authScreen(e.message); } };
 }
 async function logout() { await api('POST', '/logout'); ST.me = null; ST.uid = null; authScreen(); }
 
@@ -290,7 +281,7 @@ async function verwaltung() {
   } else {
     body = `<div class="card"><div class="list">${ST.projects.map(p => `<div class="row"><i class="dot" style="background:${p.color};width:14px;height:14px"></i><div class="t"><b>${esc(p.name)}</b></div><button class="btn ghost sm" data-p="${p.id}">Bearbeiten</button></div>`).join('')}</div></div>`;
   }
-  shell(`<div class="head"><div><h1>Verwaltung</h1><p>${window.SUPABASE_MODE ? 'Neue Mitarbeiter registrieren sich selbst. Nur der Admin schaltet sie frei, legt Wochenstunden und Urlaubstage fest und genehmigt Anträge.' : 'Nur der Admin legt Mitarbeiter, Wochenstunden und Urlaubstage fest und genehmigt Anträge.'}</p></div><div class="tools"><div class="seg">${[['users', 'Mitarbeiter' + (ST.pend.users ? ` (${ST.pend.users})` : '')], ['req', 'Anträge' + (ST.pend.absences ? ` (${ST.pend.absences})` : '')], ['proj', 'Projekte']].map(([k, l]) => `<button data-t="${k}" class="${t === k ? 'on' : ''}">${l}</button>`).join('')}</div>${t === 'users' && !window.SUPABASE_MODE ? '<button class="btn" id="nu">＋ Mitarbeiter</button>' : t === 'proj' ? '<button class="btn" id="np">＋ Projekt</button>' : ''}</div></div>${body}`);
+  shell(`<div class="head"><div><h1>Verwaltung</h1><p>Nur der Admin legt Mitarbeiter an, setzt Wochenstunden und Urlaubstage fest und genehmigt Anträge.</p></div><div class="tools"><div class="seg">${[['users', 'Mitarbeiter' + (ST.pend.users ? ` (${ST.pend.users})` : '')], ['req', 'Anträge' + (ST.pend.absences ? ` (${ST.pend.absences})` : '')], ['proj', 'Projekte']].map(([k, l]) => `<button data-t="${k}" class="${t === k ? 'on' : ''}">${l}</button>`).join('')}</div>${t === 'users' ? '<button class="btn" id="nu">＋ Mitarbeiter</button>' : t === 'proj' ? '<button class="btn" id="np">＋ Projekt</button>' : ''}</div></div>${body}`);
   document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { ST.tab = b.dataset.t; verwaltung(); });
   document.querySelectorAll('[data-u]').forEach(r => r.onclick = ev => { if (!ev.target.closest('[data-act]')) userModal(ST.users.find(u => u.id == r.dataset.u)); });
   document.querySelectorAll('[data-act]').forEach(b => b.onclick = async () => { const u = ST.users.find(x => x.id == b.dataset.act); await api('PUT', '/users/' + u.id, { ...u, status: 'active' }); toast(u.name + ' freigeschaltet'); verwaltung(); });
@@ -301,12 +292,12 @@ async function verwaltung() {
 function userModal(u) {
   const isNew = !u, adminU = u && u.role === 'admin'; u = u || { name: '', email: '', department: '', weekly_hours: 38.5, vacation_days: 25, work_days: '1,2,3,4,5', start_date: ymd(new Date()), opening_balance: 0, status: 'active' };
   const wd = String(u.work_days).split(',').map(Number);
-  openModal(`<h2>${isNew ? 'Neuer Mitarbeiter' : esc(u.name)}</h2><label for="u_n">Name</label><input id="u_n" value="${esc(u.name)}"><div class="two"><div><label for="u_e">E-Mail</label><input id="u_e" type="email" value="${esc(u.email)}" ${window.SUPABASE_MODE ? 'disabled' : ''}></div><div><label for="u_dep">Abteilung</label><input id="u_dep" value="${esc(u.department)}"></div>
+  openModal(`<h2>${isNew ? 'Neuer Mitarbeiter' : esc(u.name)}</h2><label for="u_n">Name</label><input id="u_n" value="${esc(u.name)}"><div class="two"><div><label for="u_e">E-Mail</label><input id="u_e" type="email" value="${esc(u.email)}" ${window.SUPABASE_MODE && !isNew ? 'disabled' : ''}></div><div><label for="u_dep">Abteilung</label><input id="u_dep" value="${esc(u.department)}"></div>
   <div><label for="u_h">Wochenstunden (Soll)</label><input id="u_h" type="number" step="0.5" min="0" value="${u.weekly_hours}"></div><div><label for="u_v">Urlaubstage / Jahr</label><input id="u_v" type="number" step="0.5" min="0" value="${u.vacation_days}"></div>
   <div><label for="u_s">Eintritt</label><input id="u_s" type="date" value="${u.start_date.slice(0, 10)}"></div><div><label for="u_o">Zeitsaldo bei Eintritt (Std)</label><input id="u_o" type="number" step="0.25" value="${u.opening_balance}"></div></div>
   <label>Arbeitstage</label><div class="seg full" id="u_wd">${['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d, i) => `<button type="button" data-wd="${i + 1}" class="${wd.includes(i + 1) ? 'on' : ''}">${d}</button>`).join('')}</div>
-  ${adminU ? '' : `<label for="u_st">Status</label><select id="u_st">${[['active', 'aktiv'], ['pending', 'wartet auf Freischaltung'], ['disabled', 'deaktiviert']].map(([k, l]) => `<option value="${k}" ${u.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`}
-  ${window.SUPABASE_MODE ? '' : `<label for="u_p">${isNew ? 'Passwort (mind. 8 Zeichen)' : 'Neues Passwort setzen (optional)'}</label><input id="u_p" type="password" autocomplete="new-password">`}<div id="f_err"></div><div class="acts"><button class="btn ghost" id="m_x">Abbrechen</button><button class="btn" id="m_ok">Sichern</button></div>`);
+  ${adminU ? '' : `<label for="u_st">Status</label><select id="u_st">${[['active', 'aktiv'], ['disabled', 'deaktiviert'], ...(u.status === 'pending' ? [['pending', 'wartet auf Freischaltung']] : [])].map(([k, l]) => `<option value="${k}" ${u.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`}
+  <label for="u_p">${isNew ? 'Passwort (mind. 8 Zeichen)' : 'Neues Passwort setzen (optional)'}</label><input id="u_p" type="password" autocomplete="new-password"><div id="f_err"></div><div class="acts"><button class="btn ghost" id="m_x">Abbrechen</button><button class="btn" id="m_ok">Sichern</button></div>`);
   $('#m_x').onclick = closeModal; document.querySelectorAll('[data-wd]').forEach(b => b.onclick = () => b.classList.toggle('on'));
   $('#m_ok').onclick = async () => {
     const b = { name: $('#u_n').value.trim(), email: $('#u_e').value.trim(), department: $('#u_dep').value, weekly_hours: $('#u_h').value, vacation_days: $('#u_v').value, start_date: $('#u_s').value, opening_balance: $('#u_o').value, work_days: [...document.querySelectorAll('[data-wd].on')].map(x => x.dataset.wd).join(','), status: $('#u_st') ? $('#u_st').value : 'active', password: $('#u_p') ? $('#u_p').value : '' };
