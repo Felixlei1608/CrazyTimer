@@ -1,6 +1,6 @@
 // Supabase Edge Function "admin-users": legt Mitarbeiter-Konten an und setzt Passwörter. Nur für den Admin.
 // Der service_role key steht nur hier auf dem Server (wird von Supabase automatisch bereitgestellt), nie im Browser.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -13,14 +13,13 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
     const url = Deno.env.get('SUPABASE_URL');
-    const anon = Deno.env.get('SUPABASE_ANON_KEY');
     const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     // 1) Wer ruft auf? Nur der aktive Admin darf weiter.
-    const caller = createClient(url, anon, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
-    const { data: { user } } = await caller.auth.getUser();
-    if (!user) return json({ error: 'Nicht angemeldet' }, 401);
     const admin = createClient(url, service);
+    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+    const { data: { user } } = await admin.auth.getUser(token);
+    if (!user) return json({ error: 'Nicht angemeldet' }, 401);
     const { data: me } = await admin.from('profiles').select('role,status').eq('id', user.id).single();
     if (!me || me.role !== 'admin' || me.status !== 'active') return json({ error: 'Nur der Admin darf das' }, 403);
 

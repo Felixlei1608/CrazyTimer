@@ -10,7 +10,7 @@
   //                3) ?demo = Vorschau ohne Datenbank (nur lokal)
   var host = location.hostname, onPages = /github\.io$/.test(host), tag = function (src) { return '<script src="' + src + '"><\/script>'; };
   if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
-    document.write(tag('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js') + tag('supabase-backend.js') + tag('app.js'));
+    document.write(tag('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js') + tag('supabase-backend.js') + tag('app.js'));
   } else if (onPages) {
     document.write('<div style="font:16px -apple-system,Segoe UI,sans-serif;max-width:560px;margin:15vh auto;padding:0 20px"><h2>CrazyTimer</h2><p>Die Datenbank (Supabase) ist noch nicht verbunden. Trage Project URL und anon key in <code>public/config.js</code> ein (siehe README, Abschnitt „Supabase“).</p></div>');
   } else if (/[?&]demo\b/.test(location.search)) {
