@@ -26,7 +26,10 @@ Umgebungsvariablen: `DB_HOST DB_USER DB_PASS DB_NAME PORT`.
 
 Demo-Logins (nach `db/seed.js`): `felix@crazyaquarium.at` / `Aquarium2026` (Admin), `anna@crazyaquarium.at` und `max@crazyaquarium.at` / `demo1234`.
 
-## Demo ohne Server
+## Demo ohne Server (GitHub Pages)
+Auf `https://<name>.github.io/CrazyTimer/` läuft automatisch die Browser-Demo (Beispieldaten, nichts wird gespeichert), weil Pages weder Node noch MySQL ausführt. Lokal testen: `http://localhost:3100/?demo`.
+
+Einzelne HTML-Datei bauen:
 `node demo/build.js` baut eine einzelne HTML-Datei, in der ein Browser-Mock die API ersetzt.
 
 ## Screenshots
