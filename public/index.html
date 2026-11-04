@@ -7,14 +7,14 @@
 <script>
   // Betriebsarten: 1) Supabase (config.js ausgefüllt, dauerhaft, läuft auch auf GitHub Pages)
   //                2) eigener Node-Server mit MySQL (nur wenn kein Supabase eingetragen ist)
-  //                3) ?demo = Vorschau ohne Datenbank (nur lokal)
+  //                3) ?demo = Vorschau ohne Datenbank (hat Vorrang, Daten nur im Browser)
   var host = location.hostname, onPages = /github\.io$/.test(host), tag = function (src) { return '<script src="' + src + '"><\/script>'; };
-  if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+  if (/[?&]demo\b/.test(location.search)) {
+    document.write(tag('mock-backend.js') + tag('app.js'));
+  } else if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
     document.write(tag('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js') + tag('supabase-backend.js') + tag('app.js'));
   } else if (onPages) {
     document.write('<div style="font:16px -apple-system,Segoe UI,sans-serif;max-width:560px;margin:15vh auto;padding:0 20px"><h2>CrazyTimer</h2><p>Die Datenbank (Supabase) ist noch nicht verbunden. Trage Project URL und anon key in <code>public/config.js</code> ein (siehe README, Abschnitt „Supabase“).</p></div>');
-  } else if (/[?&]demo\b/.test(location.search)) {
-    document.write(tag('mock-backend.js') + tag('app.js'));
   } else {
     document.write(tag('app.js'));
   }

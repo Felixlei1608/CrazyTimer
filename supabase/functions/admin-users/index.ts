@@ -1,4 +1,4 @@
-// Supabase Edge Function "admin-users": legt Mitarbeiter-Konten an und setzt Passwörter. Nur für den Admin.
+// Supabase Edge Function "admin-users": legt Mitarbeiter-Konten an, setzt Passwörter, ändert E-Mails und löscht Konten. Nur für den Admin.
 // Der service_role key steht nur hier auf dem Server (wird von Supabase automatisch bereitgestellt), nie im Browser.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 
@@ -51,6 +51,25 @@ Deno.serve(async (req) => {
     if (b.action === 'set_password') {
       if (String(b.password ?? '').length < 8) return json({ error: 'Passwort: mind. 8 Zeichen' }, 400);
       const { error } = await admin.auth.admin.updateUserById(b.id, { password: b.password });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+    // 4) E-Mail-Adresse eines Mitarbeiters ändern (profiles.email wird per Datenbank-Trigger nachgezogen)
+    if (b.action === 'update_email') {
+      const email = String(b.email ?? '').trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(email)) return json({ error: 'Bitte eine gültige E-Mail angeben' }, 400);
+      const { error } = await admin.auth.admin.updateUserById(b.id, { email, email_confirm: true });
+      if (error) return json({ error: /already|registered|exists/i.test(error.message) ? 'Diese E-Mail ist bereits angelegt' : error.message }, 400);
+      return json({ ok: true });
+    }
+
+    // 5) Mitarbeiter löschen (inkl. aller seiner Zeiten und Anträge). Der Admin selbst kann nicht gelöscht werden.
+    if (b.action === 'delete') {
+      if (b.id === user.id) return json({ error: 'Der Admin kann sich nicht selbst löschen' }, 400);
+      const { data: target } = await admin.from('profiles').select('role').eq('id', b.id).single();
+      if (!target) return json({ error: 'Mitarbeiter nicht gefunden' }, 404);
+      if (target.role === 'admin') return json({ error: 'Der Admin kann nicht gelöscht werden' }, 400);
+      const { error } = await admin.auth.admin.deleteUser(b.id);
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true });
     }

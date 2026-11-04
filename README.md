@@ -16,7 +16,9 @@ Die Daten liegen in einer Supabase-Datenbank (Projekt **CrazyTime**) und werden 
 
 **Wie der Schutz funktioniert:** Die Regeln stehen in der Datenbank, nicht im Browser. Es gibt genau einen Admin. Mitarbeiter sehen nur ihre eigenen Daten und können weder Wochenstunden, Urlaubstage noch ihre Rolle ändern. Urlaub, Sonderurlaub und Zeitausgleich sind Anträge, die nur der Admin genehmigt. In einem vom Admin freigegebenen (gesperrten) Monat kann nur der Admin ändern. Ein Konto, das nicht über die Funktion angelegt wurde, bleibt ohne Zugriff.
 
-**Grenze mit Supabase:** Die E-Mail-Adresse eines Kontos lässt sich nachträglich nicht ändern, dafür ein neues Konto anlegen und das alte deaktivieren.
+**Mitarbeiter bearbeiten und löschen:** Der Admin kann unter Verwaltung Name, E-Mail, Passwort, Wochenstunden, Urlaubstage, Arbeitstage und Status ändern und Mitarbeiter löschen (mit allen ihren Zeiten und Anträgen, der Admin selbst ist geschützt). Wer seine Daten behalten möchte, stellt den Status auf „deaktiviert“.
+
+**Update einer bestehenden Installation:** `supabase/update-2-email-delete.sql` im SQL Editor ausführen und den Code der Edge Function aus `supabase/functions/admin-users/index.ts` neu einfügen und deployen (Name der Funktion in `public/config.js`).
 
 ## Funktionen
 - **Zeiterfassung (Monatsliste)** mit KW-Gruppierung, Soll/Ist pro Tag und Woche, Timer (Stempeln), Wochenenden und Feiertage markiert

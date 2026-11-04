@@ -74,6 +74,12 @@ app.put('/api/users/:id', auth, adminOnly, wrap(async (req, res) => {
   if (b.password) { if (b.password.length < 8) throw fail(400, 'Passwort: mind. 8 Zeichen'); await q('UPDATE users SET pass_hash=? WHERE id=?', [hash(b.password), id]); await q('DELETE FROM sessions WHERE user_id=?', [id]); }
   res.json({ ok: true });
 }));
+app.delete('/api/users/:id', auth, adminOnly, wrap(async (req, res) => {
+  const id = +req.params.id, u = (await q('SELECT * FROM users WHERE id=?', [id]))[0];
+  if (!u) throw fail(404, 'Mitarbeiter nicht gefunden');
+  if (u.role === 'admin') throw fail(400, 'Der Admin kann nicht gelöscht werden');
+  await q('DELETE FROM users WHERE id=?', [id]); res.json({ ok: true });   // Zeiten, Anträge und Sperren werden per Fremdschlüssel mitgelöscht
+}));
 app.get('/api/admin/pending', auth, adminOnly, wrap(async (req, res) => res.json({
   users: (await q('SELECT COUNT(*) c FROM users WHERE status="pending"'))[0].c, absences: (await q('SELECT COUNT(*) c FROM absences WHERE status="beantragt"'))[0].c })));
 app.get('/api/admin/absences', auth, adminOnly, wrap(async (req, res) => res.json(await q(

@@ -63,11 +63,14 @@
       await me(); const b = body; return fn({ action: 'create', name: b.name, email: b.email, password: b.password, department: b.department, weekly_hours: b.weekly_hours, vacation_days: b.vacation_days, work_days: b.work_days, start_date: b.start_date, opening_balance: b.opening_balance });
     }
     if (method === 'PUT' && (x = m(/^\/users\/([\w-]+)$/))) {
-      const b = body, { error, data } = await sb.from('profiles').update({ name: b.name, department: b.department || '', weekly_hours: +b.weekly_hours || 38.5, vacation_days: +b.vacation_days || 0, work_days: b.work_days, start_date: b.start_date, opening_balance: +b.opening_balance || 0, status: b.status }).eq('id', x[1]).select();
+      const b = body;
+      if (b.email) { const { data: cur } = await sb.from('profiles').select('email').eq('id', x[1]).single(); if (cur && cur.email !== b.email.trim().toLowerCase()) await fn({ action: 'update_email', id: x[1], email: b.email }); }
+      const { error, data } = await sb.from('profiles').update({ name: b.name, department: b.department || '', weekly_hours: +b.weekly_hours || 38.5, vacation_days: +b.vacation_days || 0, work_days: b.work_days, start_date: b.start_date, opening_balance: +b.opening_balance || 0, status: b.status }).eq('id', x[1]).select();
       chk(error); if (!data.length) throw fail(403, 'Nur der Admin darf das');
       if (b.password) await fn({ action: 'set_password', id: x[1], password: b.password });
       return { ok: true };
     }
+    if (method === 'DELETE' && (x = m(/^\/users\/([\w-]+)$/))) { await me(); await fn({ action: 'delete', id: x[1] }); return { ok: true }; }
     if (method === 'GET' && path === '/admin/pending') {
       const c = async f => { const { count, error } = await f; chk(error); return count || 0; };
       return { users: await c(sb.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending')), absences: await c(sb.from('absences').select('id', { count: 'exact', head: true }).eq('status', 'beantragt')) };

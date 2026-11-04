@@ -104,16 +104,28 @@ end $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
 
--- Rolle, ID und E-Mail lassen sich nie ändern, der Admin bleibt immer aktiv
+-- Rolle und ID lassen sich nie ändern, die E-Mail nur über auth.users, der Admin bleibt immer aktiv
 create or replace function public.protect_profile() returns trigger
 language plpgsql as $$
 begin
-  new.id := old.id; new.email := old.email; new.role := old.role;
+  new.id := old.id; new.role := old.role;
+  if pg_trigger_depth() < 2 then new.email := old.email; end if;   -- E-Mail nur über den Abgleich aus auth.users änderbar
   if old.role = 'admin' then new.status := 'active'; end if;
   return new;
 end $$;
 drop trigger if exists protect_profile on public.profiles;
 create trigger protect_profile before update on public.profiles for each row execute function public.protect_profile();
+
+-- E-Mail-Änderungen aus auth.users in profiles übernehmen
+create or replace function public.sync_profile_email() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  update public.profiles set email = new.email where id = new.id;
+  return new;
+end $$;
+drop trigger if exists on_auth_user_email_changed on auth.users;
+create trigger on_auth_user_email_changed after update of email on auth.users
+  for each row when (old.email is distinct from new.email) execute function public.sync_profile_email();
 
 -- Krankenstand und Einträge des Admins gelten sofort, Urlaub/Sonderurlaub/Zeitausgleich sind Anträge
 create or replace function public.absence_defaults() returns trigger
