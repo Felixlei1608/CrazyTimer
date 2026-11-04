@@ -24,13 +24,12 @@ npm start                               # http://localhost:3100
 Ohne Demo-Daten registriert sich der erste Benutzer selbst und wird dadurch Admin.
 Umgebungsvariablen: `DB_HOST DB_USER DB_PASS DB_NAME PORT`.
 
-Demo-Logins (nach `db/seed.js`): `felix@crazyaquarium.at` / `Aquarium2026` (Admin), `anna@crazyaquarium.at` und `max@crazyaquarium.at` / `demo1234`.
+Demo-Logins mit Server (nach `db/seed.js`): `felix@crazyaquarium.at` / `Aquarium2026` (Admin), `anna@crazyaquarium.at` und `max@crazyaquarium.at` / `demo1234`.
 
-## Demo ohne Server (GitHub Pages)
-Auf `https://<name>.github.io/CrazyTimer/` läuft automatisch die Browser-Demo (Beispieldaten, nichts wird gespeichert), weil Pages weder Node noch MySQL ausführt. Lokal testen: `http://localhost:3100/?demo`.
+## Version für GitHub Pages (ohne Server)
+Auf `https://<name>.github.io/CrazyTimer/` läuft dieselbe App ohne Node und ohne MySQL (`public/mock-backend.js`). Sie startet **leer**, der erste registrierte Benutzer wird Admin. Alle Daten (Benutzer, Zeiten, Anträge) werden im **Browser (localStorage)** gespeichert und bleiben nach dem Neuladen erhalten. Sie sind nicht zwischen Geräten oder Benutzern geteilt. Für gemeinsame Daten wird der Server mit MySQL (siehe oben) gebraucht. Lokal testen: `http://localhost:3100/?demo`.
 
-Einzelne HTML-Datei bauen:
-`node demo/build.js` baut eine einzelne HTML-Datei, in der ein Browser-Mock die API ersetzt.
+`node demo/build.js` baut diese Version zusätzlich als einzelne HTML-Datei.
 
 ## Screenshots
 Siehe `screenshots/`.

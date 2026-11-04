@@ -107,7 +107,7 @@ function authScreen(mode = 'login', msg = '', ok = false) {
   <form id="af">${mode === 'register' ? '<input id="a_n" placeholder="Vor- und Nachname" autocomplete="name" required>' : ''}<input id="a_e" type="email" placeholder="E-Mail" autocomplete="email" required><input id="a_p" type="password" placeholder="Passwort${mode === 'register' ? ' (mind. 8 Zeichen)' : ''}" autocomplete="${mode === 'register' ? 'new-password' : 'current-password'}" required minlength="${mode === 'register' ? 8 : 1}">
   ${msg ? `<div class="${ok ? 'hint' : 'err'}" style="${ok ? 'color:var(--green);font-weight:600' : ''}">${esc(msg)}</div>` : ''}<button class="btn" type="submit">${mode === 'login' ? 'Anmelden' : 'Konto anlegen'}</button></form>
   ${mode === 'register' ? '<p class="hint">Neue Konten müssen vom Admin freigeschaltet werden. Der Admin legt auch Wochenstunden und Urlaubstage fest.</p>' : ''}
-  ${window.DEMO ? `<p class="hint">Demo-Zugänge:</p><div class="demo"><button class="btn ghost" data-q="felix@crazyaquarium.at|Aquarium2026">Als Admin</button><button class="btn ghost" data-q="anna@crazyaquarium.at|demo1234">Als Mitarbeiterin</button></div>` : ''}</div></div>`;
+  ${window.LOCAL_MODE ? `<p class="hint">${mode === 'register' ? 'Der erste registrierte Benutzer wird Admin. ' : ''}Diese Version läuft ohne Server: Alle Daten werden nur in diesem Browser gespeichert.</p>` : ''}</div></div>`;
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => authScreen(b.dataset.m));
   const login = async (email, password) => { try { await api('POST', '/login', { email, password }); boot(); } catch (e) { authScreen('login', e.message); } };
   document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => login(...b.dataset.q.split('|')));
