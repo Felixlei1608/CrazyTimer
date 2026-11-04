@@ -1,0 +1,24 @@
+# Render Blueprint: Server (Node) mit Gratis-Tarif. Die MySQL-Datenbank kommt von einem externen Anbieter (siehe README).
+services:
+  - type: web
+    name: crazytimer
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: 3100
+      - key: DB_SSL
+        value: "true"
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false

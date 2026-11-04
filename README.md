@@ -26,10 +26,24 @@ Umgebungsvariablen: `DB_HOST DB_USER DB_PASS DB_NAME PORT`.
 
 Demo-Logins mit Server (nach `db/seed.js`): `felix@crazyaquarium.at` / `Aquarium2026` (Admin), `anna@crazyaquarium.at` und `max@crazyaquarium.at` / `demo1234`.
 
-## Version für GitHub Pages (ohne Server)
-Auf `https://<name>.github.io/CrazyTimer/` läuft dieselbe App ohne Node und ohne MySQL (`public/mock-backend.js`). Sie startet **leer**, der erste registrierte Benutzer wird Admin. Alle Daten (Benutzer, Zeiten, Anträge) werden im **Browser (localStorage)** gespeichert und bleiben nach dem Neuladen erhalten. Sie sind nicht zwischen Geräten oder Benutzern geteilt. Für gemeinsame Daten wird der Server mit MySQL (siehe oben) gebraucht. Lokal testen: `http://localhost:3100/?demo`.
+## Online betreiben (dauerhaft speichern)
+GitHub Pages kann nur Dateien ausliefern, keine Datenbank. Damit alles dauerhaft und für alle Benutzer gemeinsam gespeichert wird, läuft der Server (Node.js) bei einem Hoster und verbindet sich mit einer MySQL-Datenbank. Die Tabellen legt der Server beim Start selbst an, vorhandene Daten bleiben erhalten.
 
-`node demo/build.js` baut diese Version zusätzlich als einzelne HTML-Datei.
+1. **MySQL-Datenbank** bei einem Anbieter mit Gratis-Tarif anlegen (z. B. TiDB Cloud Starter oder Aiven, Tarife vorher prüfen). Du brauchst Host, Port, Benutzer, Passwort und den Namen einer leeren Datenbank.
+2. **Server** z. B. bei Render hosten: *New → Blueprint* mit diesem Repo (`render.yaml`, nutzt das `Dockerfile`). Beim Anlegen die Umgebungsvariablen eintragen:
+
+| Variable | Bedeutung |
+|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` | Zugangsdaten der MySQL-Datenbank |
+| `DB_SSL` | `true` für verschlüsselte Verbindung (bei Online-Datenbanken meist nötig) |
+| `ADMIN_EMAIL` | **Wichtig:** Nur diese E-Mail-Adresse wird beim Registrieren Admin. Ohne diese Variable wird der erste Registrierte Admin |
+
+3. Die Adresse des Servers öffnen und mit der `ADMIN_EMAIL` registrieren: Das ist der Admin. Alle anderen Registrierungen warten auf seine Freigabe.
+4. Optional: die Server-Adresse in `public/config.js` (`APP_URL`) eintragen, dann leitet die GitHub-Pages-Adresse automatisch dorthin weiter.
+
+Hinweis: Gratis-Webserver schlafen nach einiger Zeit ohne Aufrufe ein, der erste Aufruf danach dauert etwas länger. Die Daten liegen in der Datenbank und gehen dabei nicht verloren.
+
+Vorschau ohne Server (Daten nur im Browser, nicht dauerhaft): `http://localhost:3100/?demo`. `node demo/build.js` baut diese Vorschau als einzelne HTML-Datei.
 
 ## Screenshots
 Siehe `screenshots/`.

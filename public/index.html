@@ -3,8 +3,13 @@
 <title>Zeitfluss</title><link rel="stylesheet" href="style.css"></head>
 <body><div id="app"></div>
 <div id="modal" class="modal" hidden><div class="sheet" id="sheet"></div></div>
+<script src="config.js"></script>
 <script>
-  // Auf GitHub Pages (kein Server, keine Datenbank) läuft die Browser-Demo. Lokal: ?demo anhängen, um sie zu testen.
-  if (/github\.io$/.test(location.hostname) || /[?&]demo\b/.test(location.search)) document.write('<script src="mock-backend.js"><\/script>');
+  // GitHub Pages kann keine Datenbank betreiben: dort wird auf den echten Server (config.js) weitergeleitet.
+  // Lokal gibt es mit ?demo eine Vorschau ohne Server (Daten nur im Browser, nicht dauerhaft).
+  var onPages = /github\.io$/.test(location.hostname);
+  if (onPages && window.APP_URL) location.replace(window.APP_URL);
+  else if (onPages) document.write('<div style="font:16px -apple-system,Segoe UI,sans-serif;max-width:520px;margin:15vh auto;padding:0 20px"><h2>CrazyTimer</h2><p>Der Server mit der Datenbank ist noch nicht verbunden. Trage seine Adresse in <code>public/config.js</code> ein (siehe README, Abschnitt „Online betreiben“).</p></div>');
+  else if (/[?&]demo\b/.test(location.search)) document.write('<script src="mock-backend.js"><\/script>');
 </script>
-<script src="app.js"></script></body></html>
+<script>if (!(/github\.io$/.test(location.hostname))) document.write('<script src="app.js"><\/script>');</script></body></html>

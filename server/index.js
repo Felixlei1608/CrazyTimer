@@ -5,11 +5,13 @@ const path = require('path');
 const { holidays } = require('./holidays');
 
 const pool = mysql.createPool({
+  port: +process.env.DB_PORT || 3306, ssl: process.env.DB_SSL === 'true' ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined,
   host: process.env.DB_HOST || '127.0.0.1', user: process.env.DB_USER || 'zeit', password: process.env.DB_PASS || 'zeit',
   database: process.env.DB_NAME || 'zeiterfassung', dateStrings: true, timezone: 'local', connectionLimit: 8,
 });
 const q = async (sql, p = []) => (await pool.query(sql, p))[0];
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
@@ -26,7 +28,7 @@ const cookie = req => Object.fromEntries((req.headers.cookie || '').split(';').m
 async function startSession(res, userId) {
   const token = crypto.randomBytes(32).toString('hex');
   await q('INSERT INTO sessions (token,user_id) VALUES (?,?)', [token, userId]);
-  res.setHeader('Set-Cookie', `zt=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 30}`);
+  res.setHeader('Set-Cookie', `zt=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 30}${res.req.secure ? '; Secure' : ''}`);
 }
 const auth = wrap2(async (req, res, next) => {
   const t = cookie(req).zt;
@@ -44,7 +46,9 @@ app.post('/api/register', wrap(async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !/^\S+@\S+\.\S+$/.test(email) || !password || password.length < 8) throw fail(400, 'Bitte Name, gültige E-Mail und ein Passwort mit mind. 8 Zeichen angeben');
   if ((await q('SELECT id FROM users WHERE email=?', [email.toLowerCase()])).length) throw fail(409, 'Diese E-Mail ist bereits registriert');
-  const first = (await q('SELECT COUNT(*) c FROM users'))[0].c === 0;
+  // Admin wird, wer sich registriert, solange es noch keinen Admin gibt (mit ADMIN_EMAIL nur diese Adresse)
+  const noAdmin = (await q('SELECT COUNT(*) c FROM users WHERE role="admin"'))[0].c === 0;
+  const first = noAdmin && (!process.env.ADMIN_EMAIL || process.env.ADMIN_EMAIL.toLowerCase() === email.toLowerCase());
   const r = await q('INSERT INTO users (email,name,pass_hash,role,status,start_date) VALUES (?,?,?,?,?,CURDATE())',
     [email.toLowerCase(), name.trim(), hash(password), first ? 'admin' : 'user', first ? 'active' : 'pending']);
   if (first) { await startSession(res, r.insertId); return res.json({ ok: true, admin: true }); }
@@ -179,5 +183,10 @@ app.put('/api/locks', auth, adminOnly, wrap(async (req, res) => {
 }));
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Nicht gefunden' }));
+const fs = require('fs');
+async function initDb() {   // legt fehlende Tabellen automatisch an (Daten bleiben erhalten)
+  const sql = fs.readFileSync(path.join(__dirname, '..', 'db', 'tables.sql'), 'utf8').replace(/^--.*$/gm, '');
+  for (const stmt of sql.split(';').map(s => s.trim()).filter(Boolean)) await pool.query(stmt);
+}
 const port = process.env.PORT || 3100;
-app.listen(port, () => console.log(`Zeitfluss läuft auf http://localhost:${port}`));
+initDb().then(() => app.listen(port, () => console.log(`Zeitfluss läuft auf Port ${port}`))).catch(e => { console.error('Datenbank nicht erreichbar:', e.message); process.exit(1); });
