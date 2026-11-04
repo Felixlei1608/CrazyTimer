@@ -26,7 +26,24 @@ Umgebungsvariablen: `DB_HOST DB_USER DB_PASS DB_NAME PORT`.
 
 Demo-Logins mit Server (nach `db/seed.js`): `felix@crazyaquarium.at` / `Aquarium2026` (Admin), `anna@crazyaquarium.at` und `max@crazyaquarium.at` / `demo1234`.
 
-## Online betreiben (dauerhaft speichern)
+## Auf einem eigenen Server (z. B. mit Cloudflare Tunnel)
+Auf dem Server (Linux mit Docker) genügt:
+```bash
+git clone https://github.com/Felixlei1608/crazytimer && cd crazytimer
+cp .env.example .env        # DB_PASS und ADMIN_EMAIL eintragen
+docker compose up -d --build
+```
+Das startet die App (nur auf `127.0.0.1:3100`) und eine MariaDB mit dauerhaftem Volume `dbdata`. Die Tabellen legt der Server selbst an. Wer sich mit `ADMIN_EMAIL` registriert, ist Admin, alle anderen warten auf seine Freigabe. Ohne Docker: `npm install && npm start` mit einer vorhandenen MySQL/MariaDB (Variablen `DB_HOST DB_PORT DB_USER DB_PASS DB_NAME`).
+
+**Öffentlich machen mit Cloudflare Tunnel**, zwei Möglichkeiten:
+1. **Subdomain** (z. B. `zeit.crazy-aquarium.com`): im Tunnel einen Public Hostname `zeit.crazy-aquarium.com` → `http://localhost:3100` anlegen (Cloudflare Zero Trust → Networks → Tunnels → Public Hostname), oder bei einer lokalen `config.yml` unter `ingress:` eintragen:
+   ```yaml
+   - hostname: zeit.crazy-aquarium.com
+     service: http://localhost:3100
+   ```
+2. **Unterpfad ohne Änderung an Cloudflare** (z. B. `crazy-aquarium.com/zeit/`): Im Webserver, der `crazy-aquarium.com` ausliefert, den Pfad `/zeit/` an `http://127.0.0.1:3100/` weiterleiten (Reverse Proxy, Präfix `/zeit` entfernen). Die App benutzt nur relative Adressen und funktioniert deshalb unter jedem Pfad. Aufruf mit abschließendem `/`.
+
+## Alternative: Hoster und Cloud-Datenbank
 GitHub Pages kann nur Dateien ausliefern, keine Datenbank. Damit alles dauerhaft und für alle Benutzer gemeinsam gespeichert wird, läuft der Server (Node.js) bei einem Hoster und verbindet sich mit einer MySQL-Datenbank. Die Tabellen legt der Server beim Start selbst an, vorhandene Daten bleiben erhalten.
 
 1. **MySQL-Datenbank** bei einem Anbieter mit Gratis-Tarif anlegen (z. B. TiDB Cloud Starter oder Aiven, Tarife vorher prüfen). Du brauchst Host, Port, Benutzer, Passwort und den Namen einer leeren Datenbank.

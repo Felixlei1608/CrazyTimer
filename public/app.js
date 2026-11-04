@@ -21,7 +21,7 @@ const LOCS = ['Büro', 'Homeoffice', 'Außer Haus'];
 /* ---------- API ---------- */
 async function api(m, u, b) {
   if (window.MOCK_API) return window.MOCK_API(m, u, b);
-  const r = await fetch('/api' + u, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
+  const r = await fetch('api' + u, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(j.error || 'Fehler'), { status: r.status });
   return j;

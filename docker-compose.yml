@@ -1,0 +1,34 @@
+# Starten:  docker compose up -d --build      (läuft danach dauerhaft, Daten liegen im Volume "dbdata")
+# Vorher eine Datei .env anlegen (siehe .env.example).
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: zeiterfassung
+      MARIADB_USER: zeit
+      MARIADB_PASSWORD: ${DB_PASS:?DB_PASS in .env setzen}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      retries: 10
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: zeit
+      DB_PASS: ${DB_PASS}
+      DB_NAME: zeiterfassung
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL in .env setzen}
+      PORT: 3100
+    ports:
+      - "127.0.0.1:3100:3100"   # nur lokal erreichbar, öffentlich macht es der Cloudflare Tunnel
+volumes:
+  dbdata:
